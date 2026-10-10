@@ -1,0 +1,33 @@
+---
+import Base from '../layouts/Base.astro';
+import AdminShell from '../components/AdminShell.astro';
+import { content } from '../lib/content';
+
+// Версия контента из этой сборки — стартовая точка, если файл не импортирован.
+// `<` экранируется, чтобы строки вида "</script>" не закрыли тег раньше времени.
+const initial = JSON.stringify(content).replace(/</g, '\\u003c');
+---
+
+<Base title="Редактор контента" noindex wide>
+  <AdminShell>
+    <p slot="intro" class="muted">
+      Сайт полностью статический: правки здесь ничего не меняют на сервере. Импортируйте
+      <code>content.json</code> (или начните с версии из текущей сборки), отредактируйте, экспортируйте,
+      замените им <code>data/content.json</code> и выполните <code>npm run build</code>.
+    </p>
+    <button slot="toolbar" type="button" class="btn" id="reset">Версия из сборки</button>
+  </AdminShell>
+
+  <script type="application/json" id="initial-content" set:html={initial} />
+</Base>
+
+<script>
+  import { mountAdmin } from '../scripts/editor-ui';
+
+  const initial = JSON.parse(document.getElementById('initial-content')!.textContent!);
+  const admin = mountAdmin();
+  const loadInitial = (message: string) => admin.load(structuredClone(initial), message);
+
+  loadInitial('Загружена версия контента из последней сборки');
+  document.getElementById('reset')!.addEventListener('click', () => loadInitial('Возвращена версия из последней сборки'));
+</script>

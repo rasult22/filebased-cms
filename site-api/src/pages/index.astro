@@ -1,0 +1,40 @@
+---
+import Base from '../layouts/Base.astro';
+import PostCard from '../components/PostCard.astro';
+import { content, label, sortedPosts, url } from '../lib/content';
+
+const { site, hero, features = [] } = content;
+const latest = sortedPosts().slice(0, 3);
+---
+
+<Base>
+  {hero && (
+    <section class="hero">
+      {site.tagline && <p class="eyebrow">{site.tagline}</p>}
+      {hero.heading && <h1>{hero.heading}</h1>}
+      {hero.text && <p class="lead">{hero.text}</p>}
+      {hero.cta && <a class="btn btn-primary" href={url(hero.cta.href)}>{hero.cta.label}</a>}
+    </section>
+  )}
+
+  {features.length > 0 && (
+    <section class="section">
+      <h2>{label('features', 'Преимущества')}</h2>
+      <div class="grid">
+        {features.map((f) => (
+          <div class="card">
+            <h3>{f.title}</h3>
+            {f.text && <p>{f.text}</p>}
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {latest.length > 0 && (
+    <section class="section">
+      <h2>{label('latest', 'Последние записи')}</h2>
+      <div class="grid">{latest.map((post) => <PostCard post={post} />)}</div>
+    </section>
+  )}
+</Base>

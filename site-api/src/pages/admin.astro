@@ -1,0 +1,138 @@
+---
+import Base from '../layouts/Base.astro';
+import AdminShell from '../components/AdminShell.astro';
+---
+
+<Base title="Редактор контента" noindex wide>
+  <AdminShell>
+    <p slot="intro" class="muted">
+      Изменения отправляются на сервер: <code>PUT /api/content</code> проверяет файл, записывает
+      <code>data/content.json</code> и пересобирает страницы. Если сборка упадёт, файл откатится, а сайт
+      останется прежним. Импорт и экспорт файла тоже работают — например, чтобы перенести контент из первого сайта.
+    </p>
+
+    <Fragment slot="toolbar">
+      <button type="button" class="btn btn-primary" id="save">Сохранить и пересобрать</button>
+      <button type="button" class="btn" id="pull">Загрузить с сервера</button>
+      <button type="button" class="btn" id="rebuild">Только пересобрать</button>
+      <input type="password" id="token" class="token" placeholder="ADMIN_TOKEN" aria-label="Токен API" autocomplete="off" hidden />
+    </Fragment>
+
+    <details class="build-details" id="log-wrap" hidden>
+      <summary>Журнал сборки</summary>
+      <pre class="build-log" id="log"></pre>
+    </details>
+  </AdminShell>
+</Base>
+
+<style>
+  .token {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.95rem;
+    width: 12em;
+  }
+
+  .build-details {
+    margin-top: 24px;
+  }
+
+  .build-details summary {
+    cursor: pointer;
+    color: var(--muted);
+  }
+</style>
+
+<script>
+  import { mountAdmin } from '../scripts/editor-ui';
+
+  const admin = mountAdmin();
+  const byId = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const buttons = ['save', 'pull', 'rebuild'].map((id) => byId<HTMLButtonElement>(id));
+  const tokenInput = byId<HTMLInputElement>('token');
+  const logWrap = byId<HTMLDetailsElement>('log-wrap');
+  const logEl = byId('log');
+
+  try {
+    tokenInput.value = localStorage.getItem('admin-token') ?? '';
+  } catch {}
+  tokenInput.addEventListener('change', () => {
+    try {
+      localStorage.setItem('admin-token', tokenInput.value);
+    } catch {}
+  });
+
+  class ApiError extends Error {
+    constructor(message: string, readonly data: any) {
+      super(message);
+    }
+  }
+
+  async function api(method: string, url: string, body?: unknown) {
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (tokenInput.value) headers.authorization = `Bearer ${tokenInput.value}`;
+    const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(data.error ?? `${res.status} ${res.statusText}`, data);
+    return data;
+  }
+
+  function showLog(text?: string) {
+    logEl.textContent = text ?? '';
+    logWrap.hidden = !text;
+    logWrap.open = Boolean(text);
+  }
+
+  async function busy(message: string, task: () => Promise<void>) {
+    buttons.forEach((b) => (b.disabled = true));
+    admin.setStatus(message);
+    showLog();
+    try {
+      await task();
+    } catch (e) {
+      const data = e instanceof ApiError ? e.data : {};
+      admin.setStatus((e as Error).message, 'error');
+      showLog(data.log ?? data.errors?.join('\n'));
+      if (e instanceof ApiError && data.error?.includes('токен')) tokenInput.hidden = false;
+    } finally {
+      buttons.forEach((b) => (b.disabled = false));
+    }
+  }
+
+  const builtText = (build?: { durationMs: number }) => (build ? ` за ${(build.durationMs / 1000).toFixed(1)} с` : '');
+
+  const pull = () =>
+    busy('Загрузка с сервера…', async () => {
+      admin.load(await api('GET', '/api/content'), 'Загружена текущая версия с сервера');
+    });
+
+  byId('pull').addEventListener('click', pull);
+
+  byId('save').addEventListener('click', () => {
+    const value = admin.read();
+    if (value === undefined) return;
+    busy('Сохраняю и пересобираю сайт…', async () => {
+      const result = await api('PUT', '/api/content', value);
+      admin.load(
+        result.content,
+        result.unchanged ? 'Изменений нет — сборка не понадобилась' : `Сохранено, сайт пересобран${builtText(result.build)}`,
+      );
+    });
+  });
+
+  byId('rebuild').addEventListener('click', () =>
+    busy('Пересобираю сайт…', async () => {
+      const result = await api('POST', '/api/rebuild');
+      admin.setStatus(`Сайт пересобран${builtText(result.build)}`, 'ok');
+    }),
+  );
+
+  api('GET', '/api/status')
+    .then((status) => (tokenInput.hidden = !status.authRequired))
+    .catch(() => {});
+  pull();
+</script>

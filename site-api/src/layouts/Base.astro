@@ -1,0 +1,65 @@
+---
+import '../styles/global.css';
+import { content, builtAt, url } from '../lib/content';
+
+interface Props {
+  title?: string;
+  description?: string;
+  noindex?: boolean;
+  wide?: boolean;
+}
+
+const { title, description, noindex = false, wide = false } = Astro.props;
+const { site, nav = [], contacts } = content;
+const pageTitle = title ? `${title} — ${site.title}` : site.title;
+const path = Astro.url.pathname;
+const isCurrent = (href: string) => (href === '/' ? path === url('/') : path.startsWith(url(href)));
+---
+
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description ?? site.description ?? ''} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="logo" href={url('/')}>{site.title}</a>
+        <nav aria-label="Основное меню">
+          <ul>
+            {nav.map((item) => (
+              <li>
+                <a href={url(item.href)} aria-current={isCurrent(item.href) ? 'page' : undefined}>{item.label}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main class:list={['container', { wide }]}>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        {contacts && (
+          <address>
+            {contacts.address && <span>{contacts.address}</span>}
+            {contacts.email && <a href={`mailto:${contacts.email}`}>{contacts.email}</a>}
+            {contacts.phone && <a href={`tel:${contacts.phone.replace(/[^\d+]/g, '')}`}>{contacts.phone}</a>}
+          </address>
+        )}
+        <p class="build-stamp">
+          Собрано <time datetime={builtAt.toISOString()}>{builtAt.toLocaleString('ru-RU')}</time>
+          · <a href={url('/admin/')}>Редактор контента</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
