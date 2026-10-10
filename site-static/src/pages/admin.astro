@@ -1,33 +1,67 @@
 ---
 import Base from '../layouts/Base.astro';
-import AdminShell from '../components/AdminShell.astro';
-import { content } from '../lib/content';
+import CatalogAdmin from '../components/CatalogAdmin.astro';
+import { catalog } from '../lib/catalog';
 
-// Версия контента из этой сборки — стартовая точка, если файл не импортирован.
-// `<` экранируется, чтобы строки вида "</script>" не закрыли тег раньше времени.
-const initial = JSON.stringify(content).replace(/</g, '\\u003c');
+// Каталог из этой сборки — стартовая точка, если файл не импортирован.
+// `<` экранируется, чтобы строка вида "</script>" не закрыла тег раньше времени.
+const initial = JSON.stringify(catalog).replace(/</g, '\\u003c');
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
-<Base title="Редактор контента" noindex wide>
-  <AdminShell>
+<Base title="Админка каталога" noindex wide>
+  <CatalogAdmin>
     <p slot="intro" class="muted">
-      Сайт полностью статический: правки здесь ничего не меняют на сервере. Импортируйте
-      <code>content.json</code> (или начните с версии из текущей сборки), отредактируйте, экспортируйте,
-      замените им <code>data/content.json</code> и выполните <code>npm run build</code>.
+      Сайт статический: правки живут только в этой вкладке. Отредактируйте каталог, нажмите «Экспорт», замените файлом
+      <code>data/catalog.json</code> и пересоберите сайт (на GitHub Pages — закоммитьте файл, сборка запустится сама).
     </p>
-    <button slot="toolbar" type="button" class="btn" id="reset">Версия из сборки</button>
-  </AdminShell>
+    <Fragment slot="toolbar">
+      <label class="btn">
+        Импорт
+        <input type="file" id="import" accept=".json,application/json" hidden />
+      </label>
+      <button type="button" class="btn btn-primary" id="export">Экспорт catalog.json</button>
+      <button type="button" class="btn" id="reset">Версия из сборки</button>
+    </Fragment>
+  </CatalogAdmin>
 
-  <script type="application/json" id="initial-content" set:html={initial} />
+  <script type="application/json" id="initial-catalog" set:html={initial} />
+  <script type="application/json" id="site-base" set:html={JSON.stringify(base)} />
 </Base>
 
 <script>
-  import { mountAdmin } from '../scripts/editor-ui';
+  import { mountCatalogAdmin, type Catalog } from '../scripts/catalog-admin';
 
-  const initial = JSON.parse(document.getElementById('initial-content')!.textContent!);
-  const admin = mountAdmin();
+  const read = (id: string) => JSON.parse(document.getElementById(id)!.textContent!);
+  const initial: Catalog = read('initial-catalog');
+  const base: string = read('site-base');
+
+  const admin = mountCatalogAdmin({ imageSrc: (path) => (path.startsWith('/') ? base + path : path) });
   const loadInitial = (message: string) => admin.load(structuredClone(initial), message);
+  loadInitial('Загружен каталог из последней сборки');
 
-  loadInitial('Загружена версия контента из последней сборки');
-  document.getElementById('reset')!.addEventListener('click', () => loadInitial('Возвращена версия из последней сборки'));
+  document.getElementById('reset')!.addEventListener('click', () => loadInitial('Возвращён каталог из последней сборки'));
+
+  const importInput = document.getElementById('import') as HTMLInputElement;
+  importInput.addEventListener('change', async () => {
+    const file = importInput.files?.[0];
+    importInput.value = '';
+    if (!file) return;
+    try {
+      admin.load(JSON.parse(await file.text()), `Импортирован файл ${file.name}`);
+    } catch (e) {
+      admin.setStatus(`Не удалось прочитать ${file.name}: ${(e as Error).message}`, 'error');
+    }
+  });
+
+  document.getElementById('export')!.addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(admin.catalog, null, 2) + '\n'], { type: 'application/json' });
+    const href = URL.createObjectURL(blob);
+    Object.assign(document.createElement('a'), { href, download: 'catalog.json' }).click();
+    setTimeout(() => URL.revokeObjectURL(href), 1000);
+    admin.markSaved();
+    const problems = admin.errors().length;
+    if (problems) admin.setStatus(`Файл скачан, но в нём ошибок: ${problems} — сборка с ним упадёт`, 'error');
+    else admin.setStatus('Файл скачан: замените им data/catalog.json и пересоберите сайт', 'ok');
+  });
 </script>

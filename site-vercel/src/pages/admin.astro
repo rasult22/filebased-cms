@@ -1,0 +1,171 @@
+---
+import Base from '../layouts/Base.astro';
+import CatalogAdmin from '../components/CatalogAdmin.astro';
+---
+
+<Base title="Админка каталога" noindex wide>
+  <CatalogAdmin upload>
+    <p slot="intro" class="muted">
+      Правки копятся здесь, пока вы не нажмёте «Опубликовать». Тогда каталог и новые фото уходят одним коммитом
+      в GitHub, Vercel пересобирает сайт — обычно это около минуты. Если сборка упадёт, на сайте останется прежняя версия.
+    </p>
+    <Fragment slot="toolbar">
+      <input type="password" id="token" class="token" placeholder="ADMIN_TOKEN" aria-label="Токен админки" autocomplete="current-password" hidden />
+      <button type="button" class="btn" id="pull">Загрузить заново</button>
+      <button type="button" class="btn btn-primary" id="publish">Опубликовать</button>
+    </Fragment>
+  </CatalogAdmin>
+</Base>
+
+<style>
+  .token {
+    width: 12em;
+  }
+</style>
+
+<script>
+  import { mountCatalogAdmin, type Catalog } from '../scripts/catalog-admin';
+  import { prepareUpload } from '../scripts/image';
+
+  // Vercel ограничивает тело запроса 4,5 МБ, а base64 раздувает файлы на треть.
+  const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+
+  const admin = mountCatalogAdmin({ imageSrc: (path) => path, prepareUpload });
+  const byId = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const buttons = [byId<HTMLButtonElement>('pull'), byId<HTMLButtonElement>('publish')];
+  const tokenInput = byId<HTMLInputElement>('token');
+
+  let version: string | null = null; // версия каталога для If-Match
+  let pollTimer: number | undefined;
+
+  try {
+    tokenInput.value = localStorage.getItem('admin-token') ?? '';
+  } catch {}
+  tokenInput.addEventListener('change', () => {
+    try {
+      localStorage.setItem('admin-token', tokenInput.value);
+    } catch {}
+  });
+
+  class ApiError extends Error {
+    constructor(
+      message: string,
+      readonly status: number,
+      readonly data: any,
+    ) {
+      super(message);
+    }
+  }
+
+  async function api(method: string, path: string, body?: unknown) {
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (tokenInput.value) headers.authorization = `Bearer ${tokenInput.value}`;
+    if (version && method !== 'GET') headers['if-match'] = version;
+    const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(data.error ?? `${res.status} ${res.statusText}`, res.status, data);
+    return { data, etag: res.headers.get('etag') };
+  }
+
+  async function busy(task: () => Promise<void>) {
+    buttons.forEach((b) => (b.disabled = true));
+    try {
+      await task();
+    } catch (e) {
+      const err = e as ApiError;
+      const details = err.data?.errors?.length ? `: ${err.data.errors.join('; ')}` : '';
+      admin.setStatus(err.message + details, 'error');
+      if (err.status === 401) {
+        tokenInput.hidden = false;
+        tokenInput.focus();
+      }
+    } finally {
+      buttons.forEach((b) => (b.disabled = false));
+    }
+  }
+
+  const toBase64 = (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1]);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+
+  function setStatusHtml(parts: (string | HTMLElement)[], tone: 'info' | 'ok' | 'error') {
+    admin.setStatus('', tone);
+    byId('status').append(...parts);
+  }
+
+  const link = (href: string, text: string) => Object.assign(document.createElement('a'), { href, textContent: text, target: '_blank', rel: 'noopener' });
+
+  // Следим за сборкой, которую запустил коммит.
+  function watchDeployment(sha: string, commitUrl: string) {
+    clearTimeout(pollTimer);
+    const started = Date.now();
+    const short = sha.slice(0, 7);
+    const tick = async () => {
+      try {
+        const { data } = await api('GET', `/api/status?sha=${sha}`);
+        const d = data.deployment ?? { state: 'queued' };
+        const seconds = Math.round((Date.now() - started) / 1000);
+        if (d.state === 'success') {
+          setStatusHtml(['Опубликовано: сайт пересобран (коммит ', link(commitUrl, short), '). ', link('/catalog/', 'Открыть каталог')], 'ok');
+          return;
+        }
+        if (d.state === 'failure' || d.state === 'error') {
+          setStatusHtml(['Сборка упала — на сайте прежняя версия. ', d.logUrl ? link(d.logUrl, 'Логи сборки') : ''], 'error');
+          return;
+        }
+        setStatusHtml([`Коммит `, link(commitUrl, short), ` отправлен, Vercel собирает сайт… ${seconds} с`], 'info');
+        if (Date.now() - started < 10 * 60_000) pollTimer = window.setTimeout(tick, 4000);
+      } catch {
+        pollTimer = window.setTimeout(tick, 8000);
+      }
+    };
+    tick();
+  }
+
+  const pull = () =>
+    busy(async () => {
+      admin.setStatus('Загрузка каталога…');
+      const { data, etag } = await api('GET', '/api/catalog');
+      version = etag;
+      admin.load(data as Catalog, 'Загружена текущая версия каталога');
+    });
+
+  byId('pull').addEventListener('click', () => {
+    if (admin.isDirty() && !byId('pull').dataset.armed) {
+      byId('pull').dataset.armed = '1';
+      admin.setStatus('Несохранённые правки пропадут — нажмите «Загрузить заново» ещё раз', 'error');
+      setTimeout(() => delete byId('pull').dataset.armed, 4000);
+      return;
+    }
+    pull();
+  });
+
+  byId('publish').addEventListener('click', () =>
+    busy(async () => {
+      const errors = admin.errors();
+      if (errors.length) throw new ApiError('Сначала исправьте ошибки в каталоге', 0, { errors });
+      const pending = admin.pendingUploads();
+      const size = pending.reduce((sum, u) => sum + u.blob.size, 0);
+      if (size > MAX_UPLOAD_BYTES) throw new ApiError('Слишком много новых фото за раз — опубликуйте их в несколько приёмов', 0, {});
+
+      admin.setStatus(pending.length ? `Отправляю каталог и фото (${pending.length})…` : 'Отправляю каталог…');
+      const uploads = await Promise.all(pending.map(async (u) => ({ path: u.path, data: await toBase64(u.blob) })));
+      const { data } = await api('PUT', '/api/catalog', { catalog: admin.catalog, uploads });
+      version = data.version;
+      admin.markSaved();
+
+      if (data.unchanged) admin.setStatus('Изменений нет — публиковать нечего', 'ok');
+      else if (data.commit) watchDeployment(data.commit.sha, data.commit.url);
+      else admin.setStatus('Сохранено в локальные файлы — dev-сервер уже показывает изменения', 'ok');
+    }),
+  );
+
+  api('GET', '/api/status')
+    .then(({ data }) => (tokenInput.hidden = !data.authRequired))
+    .catch(() => {});
+  pull();
+</script>

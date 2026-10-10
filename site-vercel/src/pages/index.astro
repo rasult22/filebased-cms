@@ -1,0 +1,50 @@
+---
+// Лендинг — обычная статика: тексты живут прямо в шаблоне.
+// Динамика здесь только одна: блок категорий берётся из data/catalog.json.
+import Base from '../layouts/Base.astro';
+import { catalog, productsIn, url } from '../lib/catalog';
+
+const categories = catalog.categories.map((c) => ({ ...c, count: productsIn(c.id).length }));
+---
+
+<Base>
+  <section class="hero">
+    <p class="eyebrow">Обжарочная в Алматы</p>
+    <h1>Кофе, обжаренный на этой неделе</h1>
+    <p class="lead">
+      Обжариваем небольшими партиями по вторникам и пятницам. Привозим зерно напрямую с ферм и рассказываем, откуда оно.
+    </p>
+    <a class="btn btn-primary" href={url('/catalog/')}>Перейти в каталог</a>
+  </section>
+
+  <section class="section">
+    <h2>Каталог</h2>
+    <div class="grid">
+      {categories.map((c) => (
+        <a class="card category-card" href={url(`/catalog/${c.id}/`)}>
+          <h3>{c.name}</h3>
+          {c.description && <p>{c.description}</p>}
+          <span class="meta">Товаров: {c.count}</span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Почему мы</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Свежая обжарка</h3>
+        <p>От обжарки до вашей чашки — не больше двух недель.</p>
+      </div>
+      <div class="card">
+        <h3>Прямые поставки</h3>
+        <p>Знаем фермеров по именам и платим им выше биржевой цены.</p>
+      </div>
+      <div class="card">
+        <h3>Дегустации</h3>
+        <p>Каждую субботу в 12:00 — открытый каппинг в нашем зале.</p>
+      </div>
+    </div>
+  </section>
+</Base>

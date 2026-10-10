@@ -1,0 +1,141 @@
+---
+// Разметка админки каталога. Логика — в src/scripts/catalog-admin.ts.
+// upload=true добавляет загрузку фото (второй вариант сайта).
+import '../styles/admin.css';
+
+interface Props {
+  upload?: boolean;
+}
+const { upload = false } = Astro.props;
+const ID_PATTERN = '[a-z0-9]+(-[a-z0-9]+)*';
+---
+
+<section class="admin">
+  <div class="admin-head">
+    <div class="admin-intro">
+      <h1>Каталог</h1>
+      <slot name="intro" />
+    </div>
+    <div class="toolbar">
+      <slot name="toolbar" />
+    </div>
+  </div>
+
+  <div class="status-line">
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <span id="dirty" class="dirty" hidden>Есть несохранённые изменения</span>
+  </div>
+  <ul id="issues" class="issues" hidden></ul>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="products" aria-selected="true">Товары <span class="count" data-count="products"></span></button>
+    <button type="button" role="tab" data-tab="categories" aria-selected="false">Категории <span class="count" data-count="categories"></span></button>
+  </div>
+
+  <div data-panel="products">
+    <div class="cms-bar">
+      <input type="search" id="product-search" placeholder="Поиск по названию" aria-label="Поиск товаров" />
+      <select id="product-filter" aria-label="Фильтр по категории"></select>
+      <button type="button" class="btn btn-primary" id="add-product">+ Товар</button>
+    </div>
+    <ul class="cms-list" id="product-list"></ul>
+  </div>
+
+  <div data-panel="categories" hidden>
+    <div class="cms-bar">
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-primary" id="add-category">+ Категория</button>
+    </div>
+    <ul class="cms-list" id="category-list"></ul>
+  </div>
+
+  <dialog id="product-dialog" class="cms-dialog" aria-labelledby="product-dialog-title">
+    <form id="product-form" novalidate>
+      <h2 id="product-dialog-title"></h2>
+      <div class="form-grid">
+        <div class="photo-field">
+          <div class="photo-preview" id="photo-preview"></div>
+          {upload && (
+            <label class="btn">
+              Загрузить фото
+              <input type="file" id="photo-file" accept="image/jpeg,image/png,image/webp" hidden />
+            </label>
+          )}
+          <label>
+            <span>Путь или URL фото</span>
+            <input name="image" placeholder="/images/products/имя.jpg" />
+          </label>
+          {upload ? (
+            <p class="hint">Фото уменьшается до 1600 px и сохраняется в WebP. В репозиторий оно попадёт при публикации.</p>
+          ) : (
+            <p class="hint">Положите файл в <code>public/images/products/</code> и укажите путь от корня сайта.</p>
+          )}
+        </div>
+        <div class="fields">
+          <label>
+            <span>Название</span>
+            <input name="name" required autocomplete="off" />
+          </label>
+          <label>
+            <span>ID — адрес страницы <code>/product/<em data-id-preview>…</em>/</code></span>
+            <input name="id" required pattern={ID_PATTERN} autocomplete="off" spellcheck="false" />
+          </label>
+          <label>
+            <span>Категория</span>
+            <select name="category" required></select>
+          </label>
+          <div class="row2">
+            <label>
+              <span>Цена, ₸</span>
+              <input name="price" type="number" min="0" step="1" inputmode="numeric" />
+            </label>
+            <label>
+              <span>Фасовка</span>
+              <input name="weight" placeholder="250 г" />
+            </label>
+          </div>
+          <label>
+            <span>Описание</span>
+            <textarea name="description" rows="5"></textarea>
+          </label>
+          <label class="check">
+            <input type="checkbox" name="available" />
+            <span>В наличии</span>
+          </label>
+        </div>
+      </div>
+      <p class="form-error" data-error role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn" data-cancel>Отмена</button>
+        <button type="submit" class="btn btn-primary">Готово</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="category-dialog" class="cms-dialog narrow" aria-labelledby="category-dialog-title">
+    <form id="category-form" novalidate>
+      <h2 id="category-dialog-title"></h2>
+      <div class="fields">
+        <label>
+          <span>Название</span>
+          <input name="name" required autocomplete="off" />
+        </label>
+        <label>
+          <span>ID — адрес страницы <code>/catalog/<em data-id-preview>…</em>/</code></span>
+          <input name="id" required pattern={ID_PATTERN} autocomplete="off" spellcheck="false" />
+        </label>
+        <label>
+          <span>Описание</span>
+          <textarea name="description" rows="3"></textarea>
+        </label>
+      </div>
+      <p class="form-error" data-error role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn" data-cancel>Отмена</button>
+        <button type="submit" class="btn btn-primary">Готово</button>
+      </div>
+    </form>
+  </dialog>
+
+  <slot />
+</section>

@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import CategoryNav from '../../components/CategoryNav.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { catalog, productsIn, url } from '../../lib/catalog';
+
+const groups = catalog.categories.map((c) => ({ category: c, products: productsIn(c.id) })).filter((g) => g.products.length);
+---
+
+<Base title="Каталог">
+  <section class="section">
+    <h1>Каталог</h1>
+    <CategoryNav />
+    {groups.length === 0 && <p class="muted">Товаров пока нет.</p>}
+    {groups.map(({ category, products }) => (
+      <section class="catalog-group">
+        <h2>
+          <a href={url(`/catalog/${category.id}/`)}>{category.name}</a>
+        </h2>
+        <div class="product-grid">{products.map((p) => <ProductCard product={p} />)}</div>
+      </section>
+    ))}
+  </section>
+</Base>

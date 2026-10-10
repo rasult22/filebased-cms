@@ -1,93 +1,86 @@
-# File-based CMS на Astro — два примера
+# File-based CMS на Astro: каталог из JSON
 
-Оба сайта одинаковые: полностью статические страницы, контент берётся из `data/content.json` во время `astro build`.
-Отличаются они только тем, как этот файл меняется.
+Два одинаковых сайта обжарочной «Зерно». Лендинг — обычная статика в шаблонах. Динамический контент — **каталог**:
+категории и товары с фото в `data/catalog.json`. Из него при `astro build` генерируются страницы
+`/catalog/`, `/catalog/<категория>/` и `/product/<товар>/`. В рантайме сайт ничего не загружает — это чистый HTML.
 
-| | `site-static/` | `site-api/` |
+| | `site-static/` | `site-vercel/` |
 |---|---|---|
-| Где правится контент | `/admin/` в браузере: импорт → правки → экспорт | `/admin/` или HTTP API |
-| Как правки попадают на сайт | вручную заменить `data/content.json` и запустить `npm run build` | сервер сам записывает файл и пересобирает сайт |
-| Что нужно для хостинга | любой статический хостинг (`dist/`) | Node 22.12+ (`server.mjs`) |
+| Хостинг | GitHub Pages | Vercel |
+| Админка `/admin/` | правки в браузере → экспорт `catalog.json` | правки → «Опубликовать» |
+| Как правки попадают на сайт | заменить `data/catalog.json` и закоммитить | API коммитит в GitHub сам, Vercel пересобирает |
+| Фото | путь к файлу в `public/` | загрузка из админки |
 
-## Общее
+## Админка (общая для обоих)
 
-- `data/content.json` — весь контент: `site`, `nav`, `hero`, `labels`, `features`, `posts`, `contacts`.
-  По каждому элементу `posts[]` генерируется страница `/posts/<slug>/` (`getStaticPaths`).
-- `src/lib/content.ts` — единственное место, где читается JSON. Перед сборкой файл проверяется
-  (`src/lib/validate.js`), и при ошибке сборка падает с понятным сообщением.
-- `src/scripts/json-editor.ts` — редактор произвольного JSON в виде формы: правка значений, смена типа,
-  добавление, удаление и переименование полей, перестановка и дублирование элементов списка.
-  Есть вкладка «JSON» для правки исходного текста.
-- В подвале показано время сборки — по нему видно, что сайт пересобрался.
+Вкладки «Товары» и «Категории»: создание, правка и удаление. Поиск и фильтр по категории.
+ID (адрес страницы) генерируется из названия транслитом. Если сменить ID категории, её товары переедут на новый ID.
+Категорию с товарами удалить нельзя. Перед сохранением каталог проверяется (`src/lib/validate.js`): та же проверка
+выполняется при сборке и в API, так что битый каталог не соберётся.
 
-## site-static
+## site-static → GitHub Pages
 
 ```sh
-cd site-static
-npm install
-npm run dev      # http://localhost:4321, редактор: /admin/
-npm run build    # готовый сайт в dist/
+cd site-static && npm install
+npm run dev      # http://localhost:4321, админка: /admin/
+npm run build    # dist/
 ```
 
-Порядок работы: откройте `/admin/` (по умолчанию там контент текущей сборки, можно импортировать другой файл) →
-внесите правки → «Экспорт файла» → замените им `data/content.json` → `npm run build`.
+Порядок работы: `/admin/` → правки → «Экспорт catalog.json» → замените `site-static/data/catalog.json` →
+коммит в `main`. `.github/workflows/pages.yml` соберёт и опубликует сайт.
+Фото: положите файл в `site-static/public/images/products/` и укажите в товаре путь `/images/products/имя.jpg`.
 
-### Публикация на GitHub Pages
+Pages отдаёт сайт из подпапки (`/filebased-cms/`), поэтому workflow передаёт `BASE_PATH`, а все ссылки
+и пути к фото в шаблонах проходят через `url()` из `src/lib/catalog.ts`. В JSON пути пишутся от корня.
 
-`.github/workflows/pages.yml` собирает `site-static` и публикует его при каждом пуше в `main`, который затрагивает
-`site-static/`. Новый контент: экспортируйте файл из `/admin/`, замените `site-static/data/content.json`,
-закоммитьте и запушьте (или загрузите файл через веб-интерфейс GitHub) — через минуту сайт обновится.
+## site-vercel → Vercel
 
-Pages отдаёт сайт из подпапки (`/<repo>/`), поэтому workflow передаёт в сборку `BASE_PATH`, а все ссылки
-в шаблонах и в `content.json` проходят через `url()` из `src/lib/content.ts`. Ссылки в JSON пишите от корня: `/posts/`.
+Страницы — та же статика. На сервере выполняется только `src/pages/api/[...path].ts` (функция Vercel).
+Она не пишет на диск (на Vercel его нет), а делает **коммит в GitHub** через Git Data API: каталог, новые фото
+и удаление фото, на которые больше никто не ссылается, — одним коммитом. Vercel видит пуш и пересобирает сайт;
+админка показывает статус сборки (по GitHub Deployments). Если сборка упала, на сайте остаётся прежняя версия.
 
-## site-api
+Фото сжимаются в браузере до 1600 px и сохраняются в WebP в `site-vercel/public/uploads/`.
+На сайте они появляются вместе с пересобранной версией.
 
-```sh
-cd site-api
-npm install
-npm start        # http://localhost:4322, редактор: /admin/
-```
+Переменные окружения на Vercel:
 
-`server.mjs` (без зависимостей) отдаёт статическую сборку и предоставляет API. При старте он собирает сайт.
-Каждая версия собирается в отдельный каталог `.builds/<id>/`, и раздача переключается на него только после
-успешной сборки: посетители никогда не видят полусобранный сайт. Если сборка упала, `content.json`
-откатывается к прежней версии. Предыдущие версии файла сохраняются в `data/history/` (последние 20).
+| Переменная | |
+|---|---|
+| `GITHUB_TOKEN` | токен с правом записи в репозиторий |
+| `GITHUB_REPO` | `rasult22/filebased-cms` |
+| `GITHUB_BRANCH` | ветка, по умолчанию `main` |
+| `SITE_DIR` | папка сайта в репозитории, по умолчанию `site-vercel` |
+| `ADMIN_TOKEN` | пароль админки и API; без него запись в репозиторий отключена |
 
-Переменные окружения: `PORT` (4322), `HOST` (localhost), `ADMIN_TOKEN` — если задан, все запросы, кроме GET,
-требуют заголовок `Authorization: Bearer <токен>`.
-
-Для разработки шаблонов: `npm start` в одном терминале и `npm run dev` в другом — dev-сервер Astro проксирует `/api` на `server.mjs`.
+Локально `npm run dev` работает без этих переменных: API пишет прямо в `data/catalog.json` и `public/uploads/`.
 
 ### API
 
-Все изменяющие методы проверяют контент, записывают файл, пересобирают сайт и отвечают после окончания сборки:
-`{ ok, content, build: { id, durationMs, ... } }`. Если проверка не прошла — `422 { error, errors[] }`,
-если упала сборка — `500 { error, log }`, сайт при этом не меняется.
+Изменяющие методы требуют `Authorization: Bearer <ADMIN_TOKEN>` и отвечают
+`{ ok, catalog, version, commit: { sha, url } }`. Ошибка проверки — `422 { error, errors[] }`.
+Если передать `If-Match: <version>` (из `ETag` ответа `GET /api/catalog`), а каталог успел измениться, вернётся `409`.
 
 | Метод | Путь | Что делает |
 |---|---|---|
-| GET | `/api/content` | весь файл |
-| PUT | `/api/content` | заменить файл целиком |
-| PATCH | `/api/content` | JSON Merge Patch (RFC 7396): объекты сливаются, `null` удаляет поле, массивы заменяются |
-| GET | `/api/posts` | список постов |
-| POST | `/api/posts` | добавить пост (`409`, если `slug` занят) |
-| GET | `/api/posts/:slug` | один пост |
-| PUT | `/api/posts/:slug` | заменить пост |
-| PATCH | `/api/posts/:slug` | частично изменить пост |
-| DELETE | `/api/posts/:slug` | удалить пост |
-| POST | `/api/rebuild` | пересобрать без изменений (например, после ручной правки файла) |
-| GET | `/api/status` | состояние: идёт ли сборка, последняя сборка, нужен ли токен |
+| GET | `/api/catalog` | весь каталог (+ `ETag`) |
+| PUT | `/api/catalog` | заменить каталог; тело — каталог или `{ catalog, uploads: [{ path, data }] }` |
+| GET, POST | `/api/categories` | список / создать |
+| GET, PUT, PATCH, DELETE | `/api/categories/:id` | одна категория |
+| GET, POST | `/api/products` | список / создать (можно с `uploads`) |
+| GET, PUT, PATCH, DELETE | `/api/products/:id` | один товар (PATCH — JSON Merge Patch) |
+| POST | `/api/images?name=<id>` | загрузить фото (тело — `image/webp`, `image/jpeg` или `image/png`), вернёт `path` |
+| GET | `/api/status?sha=<коммит>` | статус сборки коммита |
 
 ```sh
-curl -X PATCH localhost:4322/api/content -H 'content-type: application/json' \
-  --data-binary '{"hero":{"heading":"Новый заголовок"}}'
+# новый товар с фото одним коммитом
+curl -X POST https://<проект>.vercel.app/api/products \
+  -H "authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' \
+  --data-binary @product.json   # { "id": "...", "name": "...", "category": "...", "image": "/uploads/x.webp", "uploads": [{ "path": "/uploads/x.webp", "data": "<base64>" }] }
 
-curl -X POST localhost:4322/api/posts -H 'content-type: application/json' \
-  --data-binary @new-post.json
-
-curl -X DELETE localhost:4322/api/posts/kapping-po-subbotam
+curl -X PATCH https://<проект>.vercel.app/api/products/efiopiya-guji \
+  -H "authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' --data-binary '{"price": 7200}'
 ```
 
-> В Windows (Git Bash, cmd) curl передаёт кириллицу из аргументов командной строки в системной кодировке, и она
-> портится. Кладите тело запроса в UTF-8 файл и передавайте его через `--data-binary @file.json`.
+> В Windows curl передаёт кириллицу из аргументов командной строки в системной кодировке, и она портится.
+> Кладите тело в UTF-8 файл и передавайте через `--data-binary @file.json`.

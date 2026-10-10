@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import { content, builtAt, url } from '../lib/content';
+import { builtAt, url } from '../lib/catalog';
 
 interface Props {
   title?: string;
@@ -9,10 +9,13 @@ interface Props {
   wide?: boolean;
 }
 
-const { title, description, noindex = false, wide = false } = Astro.props;
-const { site, nav = [], contacts } = content;
-const pageTitle = title ? `${title} — ${site.title}` : site.title;
+const { title, description = 'Обжарочная «Зерно» в Алматы: свежий кофе, дрип-пакеты и аксессуары.', noindex = false, wide = false } = Astro.props;
+const pageTitle = title ? `${title} — Зерно` : 'Зерно — обжарочная в Алматы';
 const path = Astro.url.pathname;
+const nav = [
+  { label: 'Главная', href: '/' },
+  { label: 'Каталог', href: '/catalog/' },
+];
 const isCurrent = (href: string) => (href === '/' ? path === url('/') : path.startsWith(url(href)));
 ---
 
@@ -22,14 +25,14 @@ const isCurrent = (href: string) => (href === '/' ? path === url('/') : path.sta
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{pageTitle}</title>
-    <meta name="description" content={description ?? site.description ?? ''} />
+    <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
     <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
   </head>
   <body>
     <header class="site-header">
       <div class="container header-inner">
-        <a class="logo" href={url('/')}>{site.title}</a>
+        <a class="logo" href={url('/')}>Зерно</a>
         <nav aria-label="Основное меню">
           <ul>
             {nav.map((item) => (
@@ -48,16 +51,14 @@ const isCurrent = (href: string) => (href === '/' ? path === url('/') : path.sta
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        {contacts && (
-          <address>
-            {contacts.address && <span>{contacts.address}</span>}
-            {contacts.email && <a href={`mailto:${contacts.email}`}>{contacts.email}</a>}
-            {contacts.phone && <a href={`tel:${contacts.phone.replace(/[^\d+]/g, '')}`}>{contacts.phone}</a>}
-          </address>
-        )}
+        <address>
+          <span>Алматы, ул. Жибек Жолы, 50</span>
+          <a href="mailto:hello@zerno.example">hello@zerno.example</a>
+          <a href="tel:+77000000000">+7 700 000 00 00</a>
+        </address>
         <p class="build-stamp">
-          Собрано <time datetime={builtAt.toISOString()}>{builtAt.toLocaleString('ru-RU')}</time>
-          · <a href={url('/admin/')}>Редактор контента</a>
+          Каталог собран <time datetime={builtAt.toISOString()}>{builtAt.toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}</time>
+          · <a href={url('/admin/')}>Админка</a>
         </p>
       </div>
     </footer>

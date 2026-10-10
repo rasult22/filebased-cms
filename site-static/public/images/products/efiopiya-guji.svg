@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+<rect width="800" height="600" fill="#e9d8c4"/>
+<circle cx="640" cy="120" r="180" fill="#7a3e1f" opacity=".08"/>
+<path d="M270 130h260l30 60v330a20 20 0 0 1-20 20H260a20 20 0 0 1-20-20V190z" fill="#7a3e1f"/>
+<path d="M270 130h260l30 60H240z" fill="#000" opacity=".18"/>
+<rect x="290" y="230" width="220" height="1.5" fill="#e9d8c4" opacity=".5"/>
+<text x="400" y="300" text-anchor="middle" font-family="Georgia, serif" font-size="36" fill="#e9d8c4">Эфиопия</text><text x="400" y="344" text-anchor="middle" font-family="Georgia, serif" font-size="36" fill="#e9d8c4">Гуджи</text>
+<text x="400" y="460" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" letter-spacing="4" fill="#e9d8c4" opacity=".7">ЗЕРНО</text>
+</svg>

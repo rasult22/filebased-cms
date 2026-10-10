@@ -1,54 +1,51 @@
-// Проверка структуры content.json.
-// Обычный JS (не TS), чтобы этот же файл можно было импортировать и в браузере (редактор),
-// и при сборке Astro, и в Node без сборщика.
+// Проверка data/catalog.json.
+// Обычный JS (не TS), чтобы один и тот же файл работал и в браузере (админка), и при сборке, и в API.
 
-const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isText = (v) => typeof v === 'string' && v.trim() !== '';
 
 /**
- * @param {unknown} content
+ * @param {unknown} catalog
  * @returns {string[]} список ошибок; пустой — всё в порядке
  */
-export function validateContent(content) {
-  if (!isObject(content)) return ['Корень файла должен быть объектом'];
-
+export function validateCatalog(catalog) {
+  if (!isObject(catalog)) return ['Каталог должен быть объектом'];
+  const c = /** @type {Record<string, any>} */ (catalog);
   const errors = [];
-  const c = /** @type {Record<string, any>} */ (content);
 
-  if (!isObject(c.site)) errors.push('site: нужен объект');
-  else if (!isText(c.site.title)) errors.push('site.title: нужна непустая строка');
+  if (!Array.isArray(c.categories)) errors.push('categories: должен быть списком');
+  if (!Array.isArray(c.products)) errors.push('products: должен быть списком');
+  if (errors.length) return errors;
 
-  for (const key of ['nav', 'features', 'posts']) {
-    if (c[key] !== undefined && !Array.isArray(c[key])) errors.push(`${key}: должен быть списком`);
-  }
+  const categoryIds = new Set();
+  c.categories.forEach((cat, i) => {
+    const at = `Категория №${i + 1}`;
+    if (!isObject(cat)) return errors.push(`${at}: должна быть объектом`);
+    const name = isText(cat.name) ? `«${cat.name}»` : at;
+    if (!isText(cat.name)) errors.push(`${at}: нужно название`);
+    if (typeof cat.id !== 'string' || !ID_RE.test(cat.id)) errors.push(`${name}: ID — латиница в нижнем регистре, цифры и дефисы`);
+    else if (categoryIds.has(cat.id)) errors.push(`${name}: ID «${cat.id}» уже занят`);
+    else categoryIds.add(cat.id);
+  });
 
-  if (Array.isArray(c.nav)) {
-    c.nav.forEach((item, i) => {
-      if (!isObject(item) || !isText(item.label) || !isText(item.href)) {
-        errors.push(`nav[${i}]: нужны поля label и href`);
-      }
-    });
-  }
-
-  if (Array.isArray(c.posts)) {
-    const seen = new Set();
-    c.posts.forEach((post, i) => {
-      const at = `posts[${i}]`;
-      if (!isObject(post)) return errors.push(`${at}: должен быть объектом`);
-      if (typeof post.slug !== 'string' || !SLUG_RE.test(post.slug)) {
-        errors.push(`${at}.slug: только латиница в нижнем регистре, цифры и дефисы`);
-      } else if (seen.has(post.slug)) {
-        errors.push(`${at}.slug: «${post.slug}» уже занят другим постом`);
-      } else {
-        seen.add(post.slug);
-      }
-      if (!isText(post.title)) errors.push(`${at}.title: нужна непустая строка`);
-      if (post.date !== undefined && Number.isNaN(Date.parse(post.date))) {
-        errors.push(`${at}.date: ожидается дата вида 2026-10-01`);
-      }
-    });
-  }
+  const productIds = new Set();
+  c.products.forEach((p, i) => {
+    const at = `Товар №${i + 1}`;
+    if (!isObject(p)) return errors.push(`${at}: должен быть объектом`);
+    const name = isText(p.name) ? `«${p.name}»` : at;
+    if (!isText(p.name)) errors.push(`${at}: нужно название`);
+    if (typeof p.id !== 'string' || !ID_RE.test(p.id)) errors.push(`${name}: ID — латиница в нижнем регистре, цифры и дефисы`);
+    else if (productIds.has(p.id)) errors.push(`${name}: ID «${p.id}» уже занят`);
+    else productIds.add(p.id);
+    if (!categoryIds.has(p.category)) errors.push(`${name}: категория «${p.category ?? ''}» не существует`);
+    if (p.price !== undefined && (typeof p.price !== 'number' || !Number.isFinite(p.price) || p.price < 0)) {
+      errors.push(`${name}: цена должна быть неотрицательным числом`);
+    }
+    if (p.image !== undefined && typeof p.image !== 'string') errors.push(`${name}: фото — путь или URL строкой`);
+    if (p.available !== undefined && typeof p.available !== 'boolean') errors.push(`${name}: «в наличии» — true или false`);
+  });
 
   return errors;
 }

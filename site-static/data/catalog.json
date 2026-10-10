@@ -1,0 +1,101 @@
+{
+  "categories": [
+    {
+      "id": "zernovoy-kofe",
+      "name": "Зерновой кофе",
+      "description": "Свежая обжарка небольшими партиями, от двух до четырёх недель после обжарки."
+    },
+    {
+      "id": "drip-pakety",
+      "name": "Дрип-пакеты",
+      "description": "Хороший кофе без кофемолки и воронки: нужен только кипяток."
+    },
+    {
+      "id": "aksessuary",
+      "name": "Аксессуары",
+      "description": "Всё, чтобы заваривать дома так же, как в кофейне."
+    }
+  ],
+  "products": [
+    {
+      "id": "efiopiya-guji",
+      "name": "Эфиопия Гуджи",
+      "category": "zernovoy-kofe",
+      "price": 6900,
+      "weight": "250 г",
+      "description": "Мытая обработка, высота 2100 м. Бергамот, белый персик и долгое медовое послевкусие. Обжарка под фильтр.",
+      "image": "/images/products/efiopiya-guji.svg",
+      "available": true
+    },
+    {
+      "id": "kolumbiya-uila",
+      "name": "Колумбия Уила",
+      "category": "zernovoy-kofe",
+      "price": 6200,
+      "weight": "250 г",
+      "description": "Сбалансированная чашка: молочный шоколад, красное яблоко, карамель. Подходит и для эспрессо, и для фильтра.",
+      "image": "/images/products/kolumbiya-uila.svg",
+      "available": true
+    },
+    {
+      "id": "braziliya-serrado",
+      "name": "Бразилия Серрадо",
+      "category": "zernovoy-kofe",
+      "price": 5400,
+      "weight": "250 г",
+      "description": "Натуральная обработка. Орехи, какао и низкая кислотность — классика для капучино.",
+      "image": "/images/products/braziliya-serrado.svg",
+      "available": true
+    },
+    {
+      "id": "keniya-nyeri",
+      "name": "Кения Ньери",
+      "category": "zernovoy-kofe",
+      "price": 7400,
+      "weight": "250 г",
+      "description": "Чёрная смородина, грейпфрут и сочная кислотность. Небольшой лот — скоро снова будет.",
+      "image": "/images/products/keniya-nyeri.svg",
+      "available": false
+    },
+    {
+      "id": "drip-efiopiya",
+      "name": "Дрип-пакеты Эфиопия",
+      "category": "drip-pakety",
+      "price": 3200,
+      "weight": "10 шт × 12 г",
+      "description": "Наш эфиопский лот, смолотый под дрип. Повесьте пакет на чашку и залейте 180 мл воды.",
+      "image": "/images/products/drip-efiopiya.svg",
+      "available": true
+    },
+    {
+      "id": "drip-braziliya",
+      "name": "Дрип-пакеты Бразилия",
+      "category": "drip-pakety",
+      "price": 2900,
+      "weight": "10 шт × 12 г",
+      "description": "Мягкий шоколадный вкус, хорошо пьётся с молоком.",
+      "image": "/images/products/drip-braziliya.svg",
+      "available": true
+    },
+    {
+      "id": "voronka-v60",
+      "name": "Воронка V60",
+      "category": "aksessuary",
+      "price": 8500,
+      "weight": "керамика, на 1–2 чашки",
+      "description": "Классическая воронка для пуровера. В комплекте 40 фильтров.",
+      "image": "/images/products/voronka-v60.svg",
+      "available": true
+    },
+    {
+      "id": "ruchnaya-kofemolka",
+      "name": "Ручная кофемолка",
+      "category": "aksessuary",
+      "price": 24000,
+      "weight": "стальные жернова",
+      "description": "Равномерный помол от эспрессо до френч-пресса, 30 г за раз.",
+      "image": "/images/products/ruchnaya-kofemolka.svg",
+      "available": true
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { catalog, categoryById, formatPrice, productsIn, url, type Product } from '../../lib/catalog';
+
+// По странице на каждый товар из catalog.json.
+export function getStaticPaths() {
+  return catalog.products.map((product) => ({ params: { id: product.id }, props: { product } }));
+}
+
+const { product } = Astro.props as { product: Product };
+const category = categoryById(product.category)!;
+const related = productsIn(category.id).filter((p) => p.id !== product.id).slice(0, 3);
+---
+
+<Base title={product.name} description={product.description}>
+  <article class="product-page">
+    <div class="product-page-photo">
+      {product.image ? <img src={url(product.image)} alt={product.name} width="800" height="600" /> : <span class="no-photo">Нет фото</span>}
+    </div>
+    <div class="product-page-info">
+      <a class="back" href={url(`/catalog/${category.id}/`)}>← {category.name}</a>
+      <h1>{product.name}</h1>
+      {product.weight && <p class="meta">{product.weight}</p>}
+      <p class="price-row big">
+        <span class="price">{formatPrice(product.price)}</span>
+        {product.available === false && <span class="badge">Нет в наличии</span>}
+      </p>
+      {product.description && <p>{product.description}</p>}
+      <a class="btn btn-primary" href={`mailto:hello@zerno.example?subject=${encodeURIComponent(`Заказ: ${product.name}`)}`}>
+        Заказать
+      </a>
+    </div>
+  </article>
+
+  {related.length > 0 && (
+    <section class="section">
+      <h2>Ещё в категории «{category.name}»</h2>
+      <div class="product-grid">{related.map((p) => <ProductCard product={p} />)}</div>
+    </section>
+  )}
+</Base>

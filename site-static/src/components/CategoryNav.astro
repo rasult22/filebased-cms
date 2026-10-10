@@ -1,0 +1,15 @@
+---
+import { catalog, url } from '../lib/catalog';
+
+interface Props {
+  current?: string;
+}
+const { current } = Astro.props;
+---
+
+<nav class="category-nav" aria-label="Категории">
+  <a href={url('/catalog/')} aria-current={current ? undefined : 'page'}>Все товары</a>
+  {catalog.categories.map((c) => (
+    <a href={url(`/catalog/${c.id}/`)} aria-current={current === c.id ? 'page' : undefined}>{c.name}</a>
+  ))}
+</nav>

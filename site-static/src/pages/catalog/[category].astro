@@ -1,0 +1,27 @@
+---
+import Base from '../../layouts/Base.astro';
+import CategoryNav from '../../components/CategoryNav.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { catalog, productsIn, type Category } from '../../lib/catalog';
+
+// По странице на каждую категорию из catalog.json.
+export function getStaticPaths() {
+  return catalog.categories.map((category) => ({ params: { category: category.id }, props: { category } }));
+}
+
+const { category } = Astro.props as { category: Category };
+const products = productsIn(category.id);
+---
+
+<Base title={category.name} description={category.description}>
+  <section class="section">
+    <h1>{category.name}</h1>
+    {category.description && <p class="lead">{category.description}</p>}
+    <CategoryNav current={category.id} />
+    {products.length ? (
+      <div class="product-grid">{products.map((p) => <ProductCard product={p} />)}</div>
+    ) : (
+      <p class="muted">В этой категории пока нет товаров.</p>
+    )}
+  </section>
+</Base>

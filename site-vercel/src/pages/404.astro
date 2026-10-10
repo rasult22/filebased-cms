@@ -1,0 +1,12 @@
+---
+import Base from '../layouts/Base.astro';
+import { url } from '../lib/catalog';
+---
+
+<Base title="Страница не найдена" noindex>
+  <section class="section">
+    <h1>404</h1>
+    <p class="muted">Такой страницы нет. Возможно, товар сняли с продажи или переименовали.</p>
+    <a class="btn" href={url('/catalog/')}>В каталог</a>
+  </section>
+</Base>

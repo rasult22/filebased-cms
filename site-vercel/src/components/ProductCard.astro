@@ -1,0 +1,23 @@
+---
+import { formatPrice, url, type Product } from '../lib/catalog';
+
+interface Props {
+  product: Product;
+}
+const { product } = Astro.props;
+const href = url(`/product/${product.id}/`);
+---
+
+<article class:list={['product-card', { unavailable: product.available === false }]}>
+  <a class="product-photo" href={href} tabindex="-1" aria-hidden="true">
+    {product.image ? <img src={url(product.image)} alt="" loading="lazy" width="800" height="600" /> : <span class="no-photo">Нет фото</span>}
+  </a>
+  <div class="product-body">
+    <h3><a href={href}>{product.name}</a></h3>
+    {product.weight && <p class="meta">{product.weight}</p>}
+    <p class="price-row">
+      <span class="price">{formatPrice(product.price)}</span>
+      {product.available === false && <span class="badge">Нет в наличии</span>}
+    </p>
+  </div>
+</article>
