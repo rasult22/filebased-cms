@@ -21,7 +21,7 @@
       "id": "efiopiya-guji",
       "name": "Эфиопия Гуджи",
       "category": "zernovoy-kofe",
-      "price": 7100,
+      "price": 6900,
       "weight": "250 г",
       "description": "Мытая обработка, высота 2100 м. Бергамот, белый персик и долгое медовое послевкусие. Обжарка под фильтр.",
       "image": "/images/products/efiopiya-guji.svg",
@@ -96,13 +96,6 @@
       "description": "Равномерный помол от эспрессо до френч-пресса, 30 г за раз.",
       "image": "/images/products/ruchnaya-kofemolka.svg",
       "available": true
-    },
-    {
-      "id": "test-foto",
-      "name": "Тест фото",
-      "category": "aksessuary",
-      "price": 1,
-      "image": "/uploads/test-foto-1.png"
     }
   ]
 }
