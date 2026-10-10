@@ -110,6 +110,9 @@ import CatalogAdmin from '../components/CatalogAdmin.astro';
         const d = data.deployment ?? { state: 'queued' };
         const seconds = Math.round((Date.now() - started) / 1000);
         if (d.state === 'success') {
+          // Vercel сообщает об успехе чуть раньше, чем домен переключается на новую сборку.
+          setStatusHtml(['Сборка готова, переключаю сайт на новую версию…'], 'info');
+          await new Promise((r) => setTimeout(r, 8000));
           setStatusHtml(['Опубликовано: сайт пересобран (коммит ', link(commitUrl, short), '). ', link('/catalog/', 'Открыть каталог')], 'ok');
           return;
         }
