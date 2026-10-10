@@ -96,6 +96,13 @@
       "description": "Равномерный помол от эспрессо до френч-пресса, 30 г за раз.",
       "image": "/images/products/ruchnaya-kofemolka.svg",
       "available": true
+    },
+    {
+      "id": "test-foto",
+      "name": "Тест фото",
+      "category": "aksessuary",
+      "price": 1,
+      "image": "/uploads/test-foto-1.png"
     }
   ]
 }
